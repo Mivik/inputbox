@@ -5,16 +5,27 @@
 //! - `JXAScript`: JavaScript for Automation backend for macOS (macOS only)
 //! - `Yad`: [`yad`](https://github.com/v1cont/yad) backend.
 //! - `Zenity`: Zenity backend.
+//!
+//! # Default behaviors
+//!
+//! Many fields in [`InputBox`] are optional and will have default behavior. For
+//! example, if `title` is not set, a default title will be used. However the
+//! exact default values and behaviors may vary between backends (some uses
+//! constants defined in this crate like
+//! [`DEFAULT_OK_LABEL`](crate::DEFAULT_OK_LABEL) which ae not localized, while
+//! others uses system defaults). See the *Defaults* section in each backend's
+//! documentation for details.
 
 use std::{
     io::Write,
     process::{Command, Stdio},
 };
 
+use cfg_if::cfg_if;
+
 use crate::InputBox;
 
 mod general;
-use cfg_if::cfg_if;
 pub use general::{Yad, Zenity};
 
 #[cfg(target_os = "windows")]

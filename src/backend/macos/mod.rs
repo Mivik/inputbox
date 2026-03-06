@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::Path, process::Command};
 
 use crate::{
-    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, InputBox,
+    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox,
     backend::{Backend, run_command},
 };
 
@@ -17,11 +17,12 @@ const JXA_SCRIPT: &str = include_str!("inputbox.jxa.js");
 /// - Does not support [`InputMode::Multiline`] mode (falls back to single-line
 ///   input).
 ///
-/// # Caveats
+/// # Defaults
 ///
-/// - If [`ok_label`](InputBox::ok_label) or
-///   [`cancel_label`](InputBox::cancel_label) is not set, [`DEFAULT_OK_LABEL`]
-///   and [`DEFAULT_CANCEL_LABEL`] will be used, which may not be localized.
+/// - `title`: `DEFAULT_TITLE`
+/// - `prompt`: empty
+/// - `cancel_label`: `DEFAULT_CANCEL_LABEL`
+/// - `ok_label`: `DEFAULT_OK_LABEL`
 #[derive(Clone, Debug)]
 pub struct JXAScript {
     path: Cow<'static, Path>,
@@ -55,7 +56,7 @@ impl Backend for JXAScript {
             .unwrap_or(DEFAULT_CANCEL_LABEL);
         let ok_label = input.ok_label.as_deref().unwrap_or(DEFAULT_OK_LABEL);
         let value = serde_json::json!({
-            "title": input.title,
+            "title": input.title.as_deref().unwrap_or(DEFAULT_TITLE),
             "prompt": input.prompt,
             "default": input.default,
             "mode": input.mode.as_str(),

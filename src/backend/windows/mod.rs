@@ -20,9 +20,13 @@ const PS_SCRIPT: &str = include_str!("inputbox.ps1");
 ///   might be used as line breaks in the returned string. This behavior is
 ///   intentionally preserved to maintain consistency with how multiline input
 ///   is typically handled in Windows applications.
-/// - If [`ok_label`](InputBox::ok_label) or
-///   [`cancel_label`](InputBox::cancel_label) is not set, [`DEFAULT_OK_LABEL`]
-///   and [`DEFAULT_CANCEL_LABEL`] will be used, which may not be localized.
+///
+/// # Defaults
+///
+/// - `title`: `DEFAULT_TITLE`
+/// - `prompt`: empty
+/// - `cancel_label`: `DEFAULT_CANCEL_LABEL`
+/// - `ok_label`: `DEFAULT_OK_LABEL`
 #[derive(Clone, Debug)]
 pub struct PSScript {
     path: Cow<'static, Path>,
@@ -50,11 +54,11 @@ impl Default for PSScript {
 
 impl Backend for PSScript {
     fn execute(&self, input: &InputBox) -> Option<String> {
-        let ok_label = input.ok_label.as_deref().unwrap_or(DEFAULT_OK_LABEL);
         let cancel_label = input
             .cancel_label
             .as_deref()
             .unwrap_or(DEFAULT_CANCEL_LABEL);
+        let ok_label = input.ok_label.as_deref().unwrap_or(DEFAULT_OK_LABEL);
         let value = json!({
             "title": input.title,
             "prompt": input.prompt,

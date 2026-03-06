@@ -187,7 +187,7 @@ function buildDialog(opts) {
       BUTTON_HEIGHT,
     ),
   );
-  okBtn.title = ns(opts.ok_label || "OK");
+  okBtn.title = ns(opts.ok_label);
   okBtn.bezelStyle = $.NSBezelStyleRounded;
   okBtn.keyEquivalent = ns("\r");
   if (opts.mode === "multiline")
@@ -201,7 +201,7 @@ function buildDialog(opts) {
       BUTTON_HEIGHT,
     ),
   );
-  cancelBtn.title = ns(opts.cancel_label || "Cancel");
+  cancelBtn.title = ns(opts.cancel_label);
   cancelBtn.bezelStyle = $.NSBezelStyleRounded;
   cancelBtn.keyEquivalent = ns("\u001b");
 

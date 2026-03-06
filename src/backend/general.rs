@@ -13,6 +13,10 @@ use crate::{
 /// # Limitations
 ///
 /// - Prompt text is not shown when [`InputMode::Multiline`] is used.
+///
+/// # Defaults
+///
+    /// - `title`, `prompt`, `cancel_label`, `ok_label`: uses system defaults
 #[derive(Clone, Debug)]
 pub struct Zenity {
     path: Cow<'static, Path>,
@@ -92,6 +96,10 @@ impl Backend for Zenity {
 ///   [`cancel_label`](InputBox::cancel_label) MUST NOT contain the item
 ///   separator character (default `!`). You can change the item separator using
 ///   [`with_item_separator`](Yad::with_item_separator).
+///
+/// # Defaults
+///
+/// - `title`, `prompt`, `cancel_label`, `ok_label`: uses system defaults
 #[derive(Clone, Debug)]
 pub struct Yad {
     path: Cow<'static, Path>,

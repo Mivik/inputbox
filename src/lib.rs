@@ -28,9 +28,6 @@ use crate::backend::{Backend, default_backend};
 /// Default title for the input box dialog.
 pub const DEFAULT_TITLE: &str = "Input";
 
-/// Default prompt message for the input box.
-pub const DEFAULT_PROMPT: &str = "Enter text";
-
 /// Default label for the OK/confirm button.
 pub const DEFAULT_OK_LABEL: &str = "OK";
 
@@ -72,7 +69,7 @@ impl InputMode {
 /// let input = InputBox::new("Title", "Prompt")
 ///     .default("default value")
 ///     .mode(InputMode::Text)
-///     .ok_button("Submit")
+///     .ok_label("Submit")
 ///     .cancel_label("Quit");
 /// ```
 #[derive(Clone, Debug)]
@@ -96,12 +93,12 @@ pub struct InputBox<'a> {
     /// Custom label for the OK button.
     pub ok_label: Option<Cow<'a, str>>,
 
-    /// (Multiline mode) Whether to automatically wrap long lines in multiline mode.
+    /// (Multiline mode) Whether to automatically wrap long lines in multiline mode. (Default: true)
     pub auto_wrap: bool,
-    /// (Multiline mode) Whether to scroll to the end of the text on open.
+    /// (Multiline mode) Whether to scroll to the end of the text on open. (Default: false)
     pub scroll_to_end: bool,
 
-    /// Whether to suppress stderr output.
+    /// Whether to suppress stderr output. (Default: false)
     pub quiet: bool,
 }
 
@@ -176,7 +173,7 @@ impl<'a> InputBox<'a> {
     }
 
     /// Sets the custom label for the OK button.
-    pub fn ok_button(mut self, label: impl Into<Cow<'a, str>>) -> Self {
+    pub fn ok_label(mut self, label: impl Into<Cow<'a, str>>) -> Self {
         self.ok_label = Some(label.into());
         self
     }

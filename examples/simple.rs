@@ -9,7 +9,7 @@ fn main() {
         .width(400)
         .height(200)
         .cancel_label("Nope")
-        .ok_button("Fine");
+        .ok_label("Fine");
 
     let result = input.run();
     println!("Result: {:?}", result);
