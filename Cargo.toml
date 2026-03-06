@@ -6,8 +6,12 @@ edition = "2024"
 [lib]
 
 [[example]]
-name = "macos-example"
-path = "examples/macos.rs"
+name = "simple"
+path = "examples/simple.rs"
+
+[[example]]
+name = "multiline"
+path = "examples/multiline.rs"
 
 [dependencies]
 cfg-if = "1.0.4"
