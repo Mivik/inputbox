@@ -16,7 +16,7 @@ use crate::{
 ///
 /// # Defaults
 ///
-    /// - `title`, `prompt`, `cancel_label`, `ok_label`: uses system defaults
+/// - `title`, `prompt`, `cancel_label`, `ok_label`: uses system defaults
 #[derive(Clone, Debug)]
 pub struct Zenity {
     path: Cow<'static, Path>,
@@ -193,7 +193,6 @@ impl Backend for Yad {
         if let Some(height) = input.height {
             cmd.args(["--height", &height.to_string()]);
         }
-        dbg!(&cmd);
 
         run_command(&mut cmd, stdin, input.quiet)
     }
