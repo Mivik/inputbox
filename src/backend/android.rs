@@ -28,8 +28,8 @@ static GLOBAL: OnceCell<(JavaVM, GlobalRef, GlobalRef)> = OnceCell::new();
 /// To use this backend, you need to:
 ///
 /// 1. Add the `inputbox-android` AAR to your Android project.
-/// 2. Call [`Android::set_android_context`] to initialize the backend with the
-///    Android context.
+/// 2. Call [`Android::set_android_activity`] to initialize the backend with the
+///    Android actitivty.
 /// 3. Use `System.loadLibrary` to load your native library containing this
 ///    crate before showing any dialogs.
 ///
@@ -52,12 +52,12 @@ impl Android {
         Self::default()
     }
 
-    pub fn set_android_context(env: &mut JNIEnv, context: &JObject) -> jni::errors::Result<()> {
+    pub fn set_android_activity(env: &mut JNIEnv, activity: &JObject) -> jni::errors::Result<()> {
         let java_vm = env.get_java_vm()?;
         let java_class = env.find_class("moe/mivik/inputbox/InputBox")?;
         let java_class = env.new_global_ref(java_class)?;
-        let context = env.new_global_ref(context)?;
-        let _ = GLOBAL.set((java_vm, java_class, context));
+        let activity = env.new_global_ref(activity)?;
+        let _ = GLOBAL.set((java_vm, java_class, activity));
         Ok(())
     }
 
@@ -66,9 +66,9 @@ impl Android {
         input: &InputBox,
         tx: mpsc::SyncSender<Option<String>>,
     ) -> jni::errors::Result<()> {
-        let (vm, java_class, context) = GLOBAL
+        let (vm, java_class, activity) = GLOBAL
             .get()
-            .expect("Android context not set. Call Android::set_android_context first.");
+            .expect("Android activity not set. Call Android::set_android_activity first.");
         let mut env = vm.attach_current_thread()?;
 
         let java_class: &JClass = (java_class.deref()).into();
@@ -96,7 +96,7 @@ impl Android {
             "(JLandroid/app/Activity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)V",
             &[
                 JValue::Long(Box::into_raw(Box::new(tx)) as _),
-                context.into(),
+                activity.into(),
                 (&title).into(),
                 (&prompt).into(),
                 (&default).into(),
