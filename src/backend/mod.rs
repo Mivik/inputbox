@@ -39,6 +39,11 @@ mod macos;
 #[cfg(target_os = "macos")]
 pub use macos::JXAScript;
 
+#[cfg(target_os = "android")]
+mod android;
+#[cfg(target_os = "android")]
+pub use android::Android;
+
 /// Executes a command and returns its output.
 ///
 /// Internal helper function that runs a command with optional stdin input
@@ -93,6 +98,8 @@ pub fn default_backend() -> Box<dyn Backend> {
             Box::new(PSScript::default())
         } else if #[cfg(target_os = "macos")] {
             Box::new(JXAScript::default())
+        } else if #[cfg(target_os = "android")] {
+            Box::new(Android::default())
         } else {
             Box::new(Zenity::default())
         }
