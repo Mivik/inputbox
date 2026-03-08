@@ -21,7 +21,7 @@
 
 pub mod backend;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, io};
 
 use crate::backend::{Backend, default_backend};
 
@@ -196,19 +196,42 @@ impl<'a> InputBox<'a> {
         self
     }
 
-    /// Runs the input box with [`default_backend`] for the current platform.
+    /// Shows the input box with [`default_backend`] for the current platform.
     ///
     /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
     /// if the user clicked Cancel or closed the dialog.
-    pub fn run(&self) -> Option<String> {
+    pub fn show_async(
+        &self,
+        callback: impl FnOnce(io::Result<Option<String>>) + Send + 'static,
+    ) -> io::Result<()> {
+        default_backend().execute_async(self, Box::new(callback))
+    }
+
+    /// Shows the input box with the specified backend.
+    ///
+    /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
+    /// if the user clicked Cancel or closed the dialog.
+    pub fn show_with_async(
+        &self,
+        backend: &dyn Backend,
+        callback: impl FnOnce(io::Result<Option<String>>) + Send + 'static,
+    ) -> io::Result<()> {
+        backend.execute_async(self, Box::new(callback))
+    }
+
+    /// Shows the input box with [`default_backend`] for the current platform.
+    ///
+    /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
+    /// if the user clicked Cancel or closed the dialog.
+    pub fn show(&self) -> io::Result<Option<String>> {
         default_backend().execute(self)
     }
 
-    /// Runs the input box with the specified backend.
+    /// Shows the input box with the specified backend.
     ///
     /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
     /// if the user clicked Cancel or closed the dialog.
-    pub fn run_with<B: Backend>(&self, backend: &B) -> Option<String> {
+    pub fn show_with(&self, backend: &dyn Backend) -> io::Result<Option<String>> {
         backend.execute(self)
     }
 }

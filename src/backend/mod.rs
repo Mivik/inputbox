@@ -17,8 +17,11 @@
 //! documentation for details.
 
 use std::{
-    io::Write,
-    process::{Command, Stdio},
+    borrow::Cow,
+    io::{self, Write},
+    process::{Child, Command, Stdio},
+    sync::mpsc,
+    thread,
 };
 
 use cfg_if::cfg_if;
@@ -49,11 +52,51 @@ mod ios;
 #[cfg(target_os = "ios")]
 pub use ios::IOS;
 
-/// Executes a command and returns its output.
+/// Trait for platform-specific input box backends.
 ///
-/// Internal helper function that runs a command with optional stdin input
-/// and returns stdout on success or None on failure.
-fn run_command(cmd: &mut Command, stdin: Option<&str>, quiet: bool) -> Option<String> {
+/// Implement this trait to add support for different dialog implementations.
+/// See [`Zenity`] for an example (other backends are available on their
+/// respective platforms).
+pub trait Backend {
+    /// Executes the input box with the given configuration, and calls the callback
+    /// with the result when done.
+    ///
+    /// The callback will be called with `Ok(Some(input))` if the user clicked
+    /// OK and entered text, `Ok(None)` if the user clicked Cancel or closed the
+    /// dialog, or `Err(error)` if there was an error showing the dialog.
+    fn execute_async(
+        &self,
+        input: &InputBox,
+        callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
+    ) -> io::Result<()>;
+
+    /// Synchronous version of `execute_async` that blocks until the user
+    /// responds.
+    ///
+    /// This trait has a default implementation that simply calls
+    /// `execute_async` and blocks on the result. Some backends may choose to
+    /// override this with a more efficient implementation.
+    fn execute(&self, input: &InputBox) -> io::Result<Option<String>> {
+        let (tx, rx) = mpsc::sync_channel(1);
+        self.execute_async(
+            input,
+            Box::new(move |result| {
+                let _ = tx.send(result);
+            }),
+        )?;
+        match rx.recv() {
+            Ok(result) => result,
+            Err(_) => Ok(None),
+        }
+    }
+}
+
+/// Backends that utilize command-line tools.
+trait CommandBackend {
+    fn build_command<'a>(&self, input: &'a InputBox<'a>) -> (Command, Option<Cow<'a, str>>);
+}
+
+fn spawn_command((mut cmd, stdin): (Command, Option<Cow<str>>), quiet: bool) -> io::Result<Child> {
     if stdin.is_some() {
         cmd.stdin(Stdio::piped());
     }
@@ -63,34 +106,44 @@ fn run_command(cmd: &mut Command, stdin: Option<&str>, quiet: bool) -> Option<St
     } else {
         Stdio::inherit()
     });
-    let mut child = cmd.spawn().ok()?;
+    let mut child = cmd.spawn()?;
     if let Some(input) = stdin {
-        child.stdin.take()?.write_all(input.as_bytes()).ok()?;
+        child.stdin.take().unwrap().write_all(input.as_bytes())?;
     }
-    let output = child.wait_with_output().ok()?;
-
-    if output.status.success() {
-        Some(
-            String::from_utf8_lossy(&output.stdout)
-                .trim_end()
-                .to_string(),
-        )
-    } else {
-        None
-    }
+    Ok(child)
+}
+fn wait_child(child: Child) -> io::Result<Option<String>> {
+    let output = child.wait_with_output();
+    output.map(|output| {
+        if output.status.success() {
+            Some(
+                String::from_utf8_lossy(&output.stdout)
+                    .trim_end()
+                    .to_string(),
+            )
+        } else {
+            None
+        }
+    })
 }
 
-/// Trait for platform-specific input box backends.
-///
-/// Implement this trait to add support for different dialog implementations.
-/// See [`Zenity`] for an example (other backends are available on their
-/// respective platforms).
-pub trait Backend {
-    /// Executes the input box with the given configuration.
-    ///
-    /// Returns `Some(input)` if the user confirmed the dialog,
-    /// or `None` if the user cancelled or the dialog failed.
-    fn execute(&self, input: &InputBox) -> Option<String>;
+impl<T: CommandBackend> Backend for T {
+    fn execute_async(
+        &self,
+        input: &InputBox,
+        callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
+    ) -> io::Result<()> {
+        let child = spawn_command(self.build_command(input), input.quiet)?;
+        thread::spawn(move || {
+            callback(wait_child(child));
+        });
+        Ok(())
+    }
+
+    fn execute(&self, input: &InputBox) -> io::Result<Option<String>> {
+        let child = spawn_command(self.build_command(input), input.quiet)?;
+        wait_child(child)
+    }
 }
 
 pub fn default_backend() -> Box<dyn Backend> {

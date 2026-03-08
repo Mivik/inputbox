@@ -1,8 +1,7 @@
 use std::{borrow::Cow, path::Path, process::Command};
 
 use crate::{
-    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox,
-    backend::{Backend, run_command},
+    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox, backend::CommandBackend,
 };
 
 const JXA_SCRIPT: &str = include_str!("inputbox.jxa.js");
@@ -48,8 +47,8 @@ impl Default for JXAScript {
     }
 }
 
-impl Backend for JXAScript {
-    fn execute(&self, input: &InputBox) -> Option<String> {
+impl CommandBackend for JXAScript {
+    fn build_command<'a>(&self, input: &'a InputBox<'a>) -> (Command, Option<Cow<'a, str>>) {
         let cancel_label = input
             .cancel_label
             .as_deref()
@@ -67,11 +66,11 @@ impl Backend for JXAScript {
             "auto_wrap": input.auto_wrap,
             "scroll_to_end": input.scroll_to_end,
         });
-        let stdin = Some(value.to_string());
+        let stdin = value.to_string();
 
         let mut cmd = Command::new(&*self.path);
         cmd.args(["-l", "JavaScript", "-e", JXA_SCRIPT]);
 
-        run_command(&mut cmd, stdin.as_deref(), input.quiet)
+        (cmd, Some(Cow::Owned(stdin)))
     }
 }

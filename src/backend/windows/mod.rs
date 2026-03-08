@@ -2,10 +2,7 @@ use std::{borrow::Cow, path::Path, process::Command};
 
 use serde_json::json;
 
-use crate::{
-    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, InputBox,
-    backend::{Backend, run_command},
-};
+use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, InputBox, backend::CommandBackend};
 
 const PS_SCRIPT: &str = include_str!("inputbox.ps1");
 
@@ -52,8 +49,8 @@ impl Default for PSScript {
     }
 }
 
-impl Backend for PSScript {
-    fn execute(&self, input: &InputBox) -> Option<String> {
+impl CommandBackend for PSScript {
+    fn build_command<'a>(&self, input: &'a InputBox<'a>) -> (Command, Option<Cow<'a, str>>) {
         let cancel_label = input
             .cancel_label
             .as_deref()
@@ -76,6 +73,6 @@ impl Backend for PSScript {
         let mut cmd = Command::new(&*self.path);
         cmd.args(["-NoProfile", "-NoLogo", "-Command", PS_SCRIPT]);
 
-        run_command(&mut cmd, Some(&stdin), input.quiet)
+        (cmd, Some(Cow::Owned(stdin)))
     }
 }

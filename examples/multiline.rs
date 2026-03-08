@@ -5,6 +5,6 @@ fn main() {
         .default_text("Multiline\nInput\nBox")
         .mode(InputMode::Multiline);
 
-    let result = input.run();
+    let result = input.show();
     println!("Result: {:?}", result);
 }

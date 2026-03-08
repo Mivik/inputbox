@@ -1,7 +1,4 @@
-use std::{
-    ops::Deref,
-    sync::mpsc::{self, SyncSender},
-};
+use std::{io, ops::Deref};
 
 use jni::{
     JNIEnv, JavaVM,
@@ -13,8 +10,6 @@ use once_cell::sync::OnceCell;
 use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox};
 
 use super::Backend;
-
-type Callback = SyncSender<Option<String>>;
 
 static GLOBAL: OnceCell<(JavaVM, GlobalRef, GlobalRef)> = OnceCell::new();
 
@@ -64,7 +59,7 @@ impl Android {
     fn show_dialog(
         &self,
         input: &InputBox,
-        tx: mpsc::SyncSender<Option<String>>,
+        callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
     ) -> jni::errors::Result<()> {
         let (vm, java_class, activity) = GLOBAL
             .get()
@@ -95,7 +90,7 @@ impl Android {
             "showInput",
             "(JLandroid/app/Activity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)V",
             &[
-                JValue::Long(Box::into_raw(Box::new(tx)) as _),
+                JValue::Long(Box::into_raw(Box::new(callback)) as _),
                 activity.into(),
                 (&title).into(),
                 (&prompt).into(),
@@ -113,13 +108,12 @@ impl Android {
 }
 
 impl Backend for Android {
-    fn execute(&self, input: &InputBox) -> Option<String> {
-        let (tx, rx) = mpsc::sync_channel(1);
-        if let Err(err) = self.show_dialog(input, tx) {
-            log::error!("Failed to show Android input dialog: {:?}", err);
-            return None;
-        }
-        rx.recv().ok()?
+    fn execute_async(
+        &self,
+        input: &InputBox,
+        callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
+    ) -> io::Result<()> {
+        self.show_dialog(input, callback).map_err(io::Error::other)
     }
 }
 
@@ -130,6 +124,8 @@ extern "system" fn input_callback(mut env: JNIEnv, _class: JClass, callback: jlo
     } else {
         env.get_string(&text).ok().map(|s| s.into())
     };
-    let callback = unsafe { Box::from_raw(callback as *mut Callback) };
-    let _ = callback.send(text);
+    let callback = unsafe {
+        Box::from_raw(callback as *mut Box<dyn FnOnce(io::Result<Option<String>>) + Send>)
+    };
+    callback(Ok(text));
 }

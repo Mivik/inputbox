@@ -1,9 +1,6 @@
 use std::{borrow::Cow, path::Path, process::Command};
 
-use crate::{
-    InputMode,
-    backend::{Backend, run_command},
-};
+use crate::{InputBox, InputMode, backend::CommandBackend};
 
 /// Zenity backend.
 ///
@@ -42,8 +39,8 @@ impl Default for Zenity {
     }
 }
 
-impl Backend for Zenity {
-    fn execute(&self, input: &crate::InputBox) -> Option<String> {
+impl CommandBackend for Zenity {
+    fn build_command<'a>(&self, input: &'a InputBox<'a>) -> (Command, Option<Cow<'a, str>>) {
         let mut cmd = Command::new(&*self.path);
         let stdin = match input.mode {
             InputMode::Text | InputMode::Password => {
@@ -59,7 +56,7 @@ impl Backend for Zenity {
                 if input.scroll_to_end {
                     cmd.arg("--auto-scroll");
                 }
-                Some(&*input.default)
+                Some(Cow::Borrowed(&*input.default))
             }
         };
         if let Some(title) = &input.title {
@@ -81,7 +78,7 @@ impl Backend for Zenity {
             cmd.args(["--height", &height.to_string()]);
         }
 
-        run_command(&mut cmd, stdin, input.quiet)
+        (cmd, stdin)
     }
 }
 
@@ -137,8 +134,8 @@ impl Default for Yad {
     }
 }
 
-impl Backend for Yad {
-    fn execute(&self, input: &crate::InputBox) -> Option<String> {
+impl CommandBackend for Yad {
+    fn build_command<'a>(&self, input: &'a InputBox<'a>) -> (Command, Option<Cow<'a, str>>) {
         let mut cmd = Command::new(&*self.path);
         let stdin = match input.mode {
             InputMode::Text | InputMode::Password => {
@@ -163,7 +160,7 @@ impl Backend for Yad {
                 if input.scroll_to_end {
                     cmd.arg("--auto-scroll");
                 }
-                Some(&*input.default)
+                Some(Cow::Borrowed(&*input.default))
             }
         };
         if let Some(title) = &input.title {
@@ -194,6 +191,6 @@ impl Backend for Yad {
             cmd.args(["--height", &height.to_string()]);
         }
 
-        run_command(&mut cmd, stdin, input.quiet)
+        (cmd, stdin)
     }
 }

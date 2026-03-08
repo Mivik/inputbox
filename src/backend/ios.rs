@@ -1,11 +1,14 @@
-use std::{ops::Deref, ptr::NonNull, sync::mpsc};
+use std::{
+    io,
+    ops::Deref,
+    ptr::NonNull,
+    sync::{Arc, Mutex},
+};
 
 use block2::StackBlock;
 use objc2::MainThreadMarker;
 use objc2_core_foundation::{CGFloat, CGRect, CGSize};
-use objc2_foundation::{
-    NSArray, NSDate, NSObjectNSKeyValueCoding, NSRange, NSRunLoop, NSString, ns_string,
-};
+use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRange, NSString, ns_string};
 use objc2_ui_kit::{
     NSLayoutConstraint, UIAlertAction, UIAlertActionStyle, UIAlertController,
     UIAlertControllerStyle, UIFont, UITextField, UITextInputTraits, UITextView, UIViewController,
@@ -14,6 +17,13 @@ use objc2_ui_kit::{
 use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputMode, backend::Backend};
 
 /// IOS backend for InputBox.
+///
+/// # Warnings
+///
+/// - You may not call this backend in synchronous fashion (e.g. by calling
+///   `execute` directly or using `show`), as it will block the main thread and
+///   cause the app to freeze. Always use `execute_async` or `show_with_async`
+///   when using this backend.
 ///
 /// # Limitations
 ///
@@ -39,7 +49,13 @@ impl<'a> IOS<'a> {
 }
 
 impl<'a> Backend for IOS<'a> {
-    fn execute(&self, input: &crate::InputBox) -> Option<String> {
+    fn execute_async(
+        &self,
+        input: &crate::InputBox,
+        callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
+    ) -> io::Result<()> {
+        let callback = Arc::new(Mutex::new(Some(callback)));
+
         let mtm = MainThreadMarker::new().unwrap();
 
         let title = input.title.as_deref().unwrap_or(DEFAULT_TITLE);
@@ -51,8 +67,6 @@ impl<'a> Backend for IOS<'a> {
             UIAlertControllerStyle::Alert,
             mtm,
         );
-
-        let (tx, rx) = mpsc::sync_channel::<Option<String>>(1);
 
         let mode = input.mode.clone();
         let default = input.default.to_string();
@@ -138,32 +152,38 @@ impl<'a> Backend for IOS<'a> {
             .cancel_label
             .as_deref()
             .unwrap_or(DEFAULT_CANCEL_LABEL);
-        let tx_cancel = tx.clone();
         let cancel_action = UIAlertAction::actionWithTitle_style_handler(
             Some(&NSString::from_str(cancel_label)),
             UIAlertActionStyle::Cancel,
-            Some(&StackBlock::new(move |_| {
-                let _ = tx_cancel.send(None);
+            Some(&StackBlock::new({
+                let callback = callback.clone();
+                move |_| {
+                    if let Some(cb) = { callback.lock().unwrap().take() } {
+                        cb(Ok(None));
+                    }
+                }
             })),
             mtm,
         );
         alert.addAction(&cancel_action);
 
         let ok_label = input.ok_label.as_deref().unwrap_or(DEFAULT_OK_LABEL);
-        let tx_ok = tx.clone();
         let ok_action = UIAlertAction::actionWithTitle_style_handler(
             Some(&NSString::from_str(ok_label)),
             UIAlertActionStyle::Default,
             Some(&StackBlock::new({
                 let alert = alert.clone();
+                let callback = callback.clone();
                 move |_| {
-                    let text = if let Some(tv) = &text_view {
-                        tv.text().to_string()
-                    } else {
-                        let fields = alert.textFields().unwrap().firstObject().unwrap();
-                        fields.text().unwrap().to_string()
-                    };
-                    let _ = tx_ok.send(Some(text));
+                    if let Some(cb) = { callback.lock().unwrap().take() } {
+                        let text = if let Some(tv) = &text_view {
+                            tv.text().to_string()
+                        } else {
+                            let fields = alert.textFields().unwrap().firstObject().unwrap();
+                            fields.text().unwrap().to_string()
+                        };
+                        cb(Ok(Some(text)));
+                    }
                 }
             })),
             mtm,
@@ -173,16 +193,6 @@ impl<'a> Backend for IOS<'a> {
         self.view_ctrl
             .presentViewController_animated_completion(&alert, true, None);
 
-        let run_loop = NSRunLoop::currentRunLoop();
-        loop {
-            match rx.try_recv() {
-                Ok(res) => return res,
-                Err(mpsc::TryRecvError::Disconnected) => return None,
-                Err(mpsc::TryRecvError::Empty) => {
-                    let date = NSDate::dateWithTimeIntervalSinceNow(0.05);
-                    run_loop.runUntilDate(&date);
-                }
-            }
-        }
+        Ok(())
     }
 }

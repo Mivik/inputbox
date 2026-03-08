@@ -11,6 +11,6 @@ fn main() {
         .cancel_label("Nope")
         .ok_label("Fine");
 
-    let result = input.run();
+    let result = input.show();
     println!("Result: {:?}", result);
 }
