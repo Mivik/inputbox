@@ -53,6 +53,22 @@ impl IOS {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Helper function to get the topmost view controller for presenting the alert.
+    ///
+    /// Returns `None` if no active window or view controller is found.
+    pub fn get_top_view_controller(mtm: MainThreadMarker) -> Option<Retained<UIViewController>> {
+        let key_window = UIApplication::sharedApplication(mtm)
+            .connectedScenes()
+            .iter()
+            .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
+            .find_map(|scene| scene.keyWindow())?;
+        let mut top_vc = key_window.rootViewController()?;
+        while let Some(presented) = top_vc.presentedViewController() {
+            top_vc = presented;
+        }
+        Some(top_vc)
+    }
 }
 
 impl Backend for IOS {
@@ -198,7 +214,7 @@ impl Backend for IOS {
         );
         alert.addAction(&ok_action);
 
-        let top_vc = get_top_view_controller(mtm).ok_or_else(|| {
+        let top_vc = Self::get_top_view_controller(mtm).ok_or_else(|| {
             io::Error::other(
                 "no active window or view controller found to present the input dialog",
             )
@@ -207,20 +223,4 @@ impl Backend for IOS {
 
         Ok(())
     }
-}
-
-/// Helper function to get the topmost view controller for presenting the alert.
-///
-/// Returns `None` if no active window or view controller is found.
-pub fn get_top_view_controller(mtm: MainThreadMarker) -> Option<Retained<UIViewController>> {
-    let key_window = UIApplication::sharedApplication(mtm)
-        .connectedScenes()
-        .iter()
-        .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
-        .find_map(|scene| scene.keyWindow())?;
-    let mut top_vc = key_window.rootViewController()?;
-    while let Some(presented) = top_vc.presentedViewController() {
-        top_vc = presented;
-    }
-    Some(top_vc)
 }
