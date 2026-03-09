@@ -1,6 +1,7 @@
 //! OHOS (OpenHarmony) backend for InputBox.
 //!
-//! This backend uses NAPI to communicate with ArkTS layer for showing native dialogs.
+//! This backend uses NAPI to communicate with ArkTS layer for showing native
+//! dialogs.
 
 use std::io;
 use std::sync::OnceLock;
@@ -12,7 +13,7 @@ use napi_ohos::{
 };
 
 use super::Backend;
-use crate::{InputBox, InputMode, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
+use crate::{InputBox, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
 
 type Callback = Box<dyn FnOnce(io::Result<Option<String>>) + Send>;
 
@@ -101,7 +102,8 @@ impl Backend for OHOS {
         callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
     ) -> io::Result<()> {
         let tsfn = REQUEST_CALLBACK.get().ok_or_else(|| {
-            io::Error::other(
+            io::Error::new(
+                io::ErrorKind::Other,
                 "OHOS callback not registered. Call registerInputboxCallback from ArkTS first.",
             )
         })?;
@@ -111,12 +113,7 @@ impl Backend for OHOS {
             title: input.title.as_deref().unwrap_or(DEFAULT_TITLE).to_string(),
             prompt: input.prompt.as_deref().map(|s| s.to_string()),
             default_value: input.default.to_string(),
-            mode: match input.mode {
-                InputMode::Text => "text",
-                InputMode::Password => "password",
-                InputMode::Multiline => "multiline",
-            }
-            .to_string(),
+            mode: input.mode.as_str().to_owned(),
             ok_label: input
                 .ok_label
                 .as_deref()
@@ -138,10 +135,10 @@ impl Backend for OHOS {
         if status != napi_ohos::Status::Ok {
             // Recover and invoke callback if send failed
             let callback = unsafe { Box::from_raw(callback_ptr) };
-            callback(Err(io::Error::other(format!(
-                "Failed to send request to ArkTS: {:?}",
-                status
-            ))));
+            callback(Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to send request to ArkTS: {:?}", status),
+            )));
         }
 
         Ok(())
@@ -150,8 +147,8 @@ impl Backend for OHOS {
 
 /// Register the ArkTS callback handler for input box requests.
 ///
-/// This function must be called from ArkTS before using the InputBox API.
-/// The callback will receive [`InputBoxRequest`] objects when `show()` is called.
+/// This function must be called from ArkTS before using the InputBox API. The
+/// callback will receive [`InputBoxRequest`] objects when `show()` is called.
 ///
 /// # Example
 ///
@@ -209,7 +206,7 @@ pub fn on_inputbox_response(response: InputBoxResponse) {
     let callback = unsafe { Box::from_raw(response.callback as *mut Callback) };
 
     if let Some(error) = response.error {
-        callback(Err(io::Error::other(error)));
+        callback(Err(io::Error::new(io::ErrorKind::Other, error)));
     } else {
         callback(Ok(response.text));
     }
