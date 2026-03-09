@@ -1,7 +1,13 @@
 use std::io;
 
 use jni::{
-    Env, EnvUnowned, JavaVM, Outcome, errors::ThrowRuntimeExAndDefault, jni_sig, jni_str, objects::{JClass, JObject, JString, JValue}, refs::Global, signature::MethodSignature, sys::{JNIEnv, jlong}
+    Env, EnvUnowned, JavaVM, Outcome,
+    errors::ThrowRuntimeExAndDefault,
+    jni_sig, jni_str,
+    objects::{JClass, JObject, JString, JValue},
+    refs::Global,
+    signature::MethodSignature,
+    sys::{JNIEnv, jlong},
 };
 use once_cell::sync::OnceCell;
 
@@ -80,7 +86,7 @@ impl Android {
         match env.with_env_no_catch(Self::initialize).into_outcome() {
             Outcome::Ok(()) => Ok(()),
             Outcome::Err(err) => Err(err),
-            Outcome::Panic(_) => unreachable!()
+            Outcome::Panic(_) => unreachable!(),
         }
     }
 
@@ -103,9 +109,9 @@ impl Android {
             ) -> JString
         );
 
-        let java_class = JAVA_CLASS
-            .get()
-            .expect("Android activity not set. Call Android::initialize* first.");
+        let java_class = JAVA_CLASS.get().ok_or_else(|| {
+            io::Error::other("Android activity not set. Call Android::initialize* first.")
+        })?;
         JavaVM::singleton()?.attach_current_thread(|env| -> Result<(), IoErrorWrapper> {
             let title = env.new_string(input.title.as_deref().unwrap_or(DEFAULT_TITLE))?;
             #[allow(clippy::redundant_closure)]
