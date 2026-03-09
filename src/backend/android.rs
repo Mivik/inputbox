@@ -39,7 +39,9 @@ static GLOBAL: OnceCell<(JavaVM, GlobalRef, GlobalRef)> = OnceCell::new();
 /// - `cancel_label`: `DEFAULT_CANCEL_LABEL`
 /// - `ok_label`: `DEFAULT_OK_LABEL`
 #[derive(Debug, Clone, Default)]
-pub struct Android {}
+pub struct Android {
+    _priv: (),
+}
 
 impl Android {
     /// Creates a new Android backend.

@@ -6,40 +6,18 @@ use std::{
 };
 
 use block2::StackBlock;
-use objc2::{MainThreadMarker, rc::Retained};
+use objc2::MainThreadMarker;
 use objc2_core_foundation::{CGFloat, CGRect, CGSize};
 use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRange, NSString, ns_string};
 use objc2_ui_kit::{
     NSLayoutConstraint, UIAlertAction, UIAlertActionStyle, UIAlertController,
-    UIAlertControllerStyle, UIFont, UITextField, UITextInputTraits, UITextView, UIViewController,
+    UIAlertControllerStyle, UIApplication, UIFont, UITextField, UITextInputTraits, UITextView,
+    UIViewController, UIWindowScene,
 };
-use once_cell::sync::OnceCell;
 
 use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputMode, backend::Backend};
 
-struct Global {
-    vc: Retained<UIViewController>,
-}
-
-unsafe impl Send for Global {}
-unsafe impl Sync for Global {}
-
-static GLOBAL: OnceCell<Global> = OnceCell::new();
-
 /// IOS backend for InputBox.
-///
-/// # Setup
-///
-/// To use this backend, you need do either of the following:
-///
-/// - Call [`IOS::set_view_controller`] to set a custom view controller before
-///   creating backend instances. (This enables [`crate::default_backend`] to
-///   work out of the box)
-///
-/// or
-///
-/// - Use [`IOS::custom`] to create backend instances with a custom view
-///   controller.
 ///
 /// # Warnings
 ///
@@ -61,43 +39,19 @@ static GLOBAL: OnceCell<Global> = OnceCell::new();
 /// - `prompt`: empty
 /// - `cancel_label`: `DEFAULT_CANCEL_LABEL`
 /// - `ok_label`: `DEFAULT_OK_LABEL`
-pub struct IOS<'a> {
-    view_ctrl: &'a UIViewController,
+#[derive(Default)]
+pub struct IOS {
+    _priv: (),
 }
 
-impl Default for IOS<'_> {
-    fn default() -> Self {
-        let _mtm = MainThreadMarker::new().expect("IOS backend must be created on main thread");
-        let global = GLOBAL.get().expect("IOS backend not initialized. Call IOS");
-        Self {
-            view_ctrl: &global.vc,
-        }
-    }
-}
-
-impl<'a> IOS<'a> {
-    /// Creates a new IOS backend using the view controller set by `set_view_controller`.
-    ///
-    /// See the struct-level documentation for more details.
+impl IOS {
+    /// Creates a new IOS backend.
     pub fn new() -> Self {
         Self::default()
     }
-
-    /// Creates a new IOS backend with the given view controller.
-    pub fn custom(view_ctrl: &'a UIViewController) -> Self {
-        Self { view_ctrl }
-    }
-
-    /// Sets the view controller to be used by the backend. This must be called before
-    /// creating backend instances
-    pub fn set_view_controller(view_ctrl: Retained<UIViewController>) {
-        let _mtm =
-            MainThreadMarker::new().expect("set_view_controller must be called on main thread");
-        let _ = GLOBAL.set(Global { vc: view_ctrl });
-    }
 }
 
-impl<'a> Backend for IOS<'a> {
+impl Backend for IOS {
     fn execute_async(
         &self,
         input: &crate::InputBox,
@@ -105,7 +59,8 @@ impl<'a> Backend for IOS<'a> {
     ) -> io::Result<()> {
         let callback = Arc::new(Mutex::new(Some(callback)));
 
-        let mtm = MainThreadMarker::new().expect("IOS backend can only be used on main thread");
+        let mtm = MainThreadMarker::new()
+            .ok_or_else(|| io::Error::other("IOS backend can only be used on main thread"))?;
 
         let title = input.title.as_deref().unwrap_or(DEFAULT_TITLE);
         let prompt_ns = input.prompt.as_deref().map(NSString::from_str);
@@ -229,7 +184,7 @@ impl<'a> Backend for IOS<'a> {
                             tv.text().to_string()
                         } else {
                             let fields = alert.textFields().unwrap().firstObject().unwrap();
-                            fields.text().unwrap().to_string()
+                            fields.text().map_or_else(String::new, |s| s.to_string())
                         };
                         cb(Ok(Some(text)));
                     }
@@ -239,8 +194,19 @@ impl<'a> Backend for IOS<'a> {
         );
         alert.addAction(&ok_action);
 
-        self.view_ctrl
-            .presentViewController_animated_completion(&alert, true, None);
+        let key_window = UIApplication::sharedApplication(mtm)
+            .connectedScenes()
+            .iter()
+            .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
+            .find_map(|scene| scene.keyWindow())
+            .ok_or_else(|| io::Error::other("no active window found"))?;
+        let mut top_vc = key_window
+            .rootViewController()
+            .ok_or_else(|| io::Error::other("no root ViewController found for key window"))?;
+        while let Some(presented) = top_vc.presentedViewController() {
+            top_vc = presented;
+        }
+        top_vc.presentViewController_animated_completion(&alert, true, None);
 
         Ok(())
     }
