@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::Path, process::Command};
 
 use crate::{
-    DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox, backend::CommandBackend,
+    backend::CommandBackend, InputBox, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE,
 };
 
 const JXA_SCRIPT: &str = include_str!("inputbox.jxa.js");

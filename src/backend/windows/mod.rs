@@ -2,7 +2,7 @@ use std::{borrow::Cow, path::Path, process::Command};
 
 use serde_json::json;
 
-use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, InputBox, backend::CommandBackend};
+use crate::{backend::CommandBackend, InputBox, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL};
 
 const PS_SCRIPT: &str = include_str!("inputbox.ps1");
 

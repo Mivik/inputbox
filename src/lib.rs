@@ -34,7 +34,7 @@ pub mod backend;
 
 use std::{borrow::Cow, io};
 
-use crate::backend::{Backend, default_backend};
+use crate::backend::{default_backend, Backend};
 
 /// Default title for the input box dialog.
 pub const DEFAULT_TITLE: &str = "Input";

@@ -14,6 +14,8 @@ use napi_ohos::{
 use super::Backend;
 use crate::{InputBox, InputMode, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
 
+type Callback = Box<dyn FnOnce(io::Result<Option<String>>) + Send>;
+
 static REQUEST_CALLBACK: OnceLock<
     ThreadsafeFunction<InputBoxRequest, (), InputBoxRequest, napi_ohos::Status, false, false, 16>,
 > = OnceLock::new();
@@ -21,8 +23,7 @@ static REQUEST_CALLBACK: OnceLock<
 #[napi(object)]
 #[derive(Clone)]
 pub struct InputBoxRequest {
-    /// Callback pointer as i64 (leaked Box<dyn FnOnce>)
-    pub callback_ptr: i64,
+    pub callback: i64,
     pub title: String,
     pub prompt: Option<String>,
     pub default_value: String,
@@ -38,8 +39,7 @@ pub struct InputBoxRequest {
 #[allow(dead_code)]
 #[napi(object)]
 pub struct InputBoxResponse {
-    /// Callback pointer as i64 (to recover the leaked Box)
-    pub callback_ptr: i64,
+    pub callback: i64,
     pub text: Option<String>,
     pub error: Option<String>,
 }
@@ -66,7 +66,7 @@ pub struct InputBoxResponse {
 ///   // Show your custom dialog using request.title, request.prompt, etc.
 ///   // When user confirms or cancels, call:
 ///   inputbox.onInputboxResponse({
-///     callbackPtr: request.callbackPtr,
+///     callback: request.callback,
 ///     text: userInput,  // or null if cancelled
 ///     error: null
 ///   });
@@ -101,22 +101,22 @@ impl Backend for OHOS {
         callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
     ) -> io::Result<()> {
         let tsfn = REQUEST_CALLBACK.get().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::Other,
+            io::Error::other(
                 "OHOS callback not registered. Call registerInputboxCallback from ArkTS first.",
             )
         })?;
-
-        // Leak the callback and pass its pointer to ArkTS
-        // ArkTS will call on_inputbox_response with this pointer to invoke the callback
-        let callback_ptr = Box::into_raw(Box::new(callback)) as i64;
-
+        let callback_ptr = Box::into_raw(Box::new(callback));
         let request = InputBoxRequest {
-            callback_ptr,
+            callback: callback_ptr as i64,
             title: input.title.as_deref().unwrap_or(DEFAULT_TITLE).to_string(),
             prompt: input.prompt.as_deref().map(|s| s.to_string()),
             default_value: input.default.to_string(),
-            mode: input.mode.as_str().to_owned(),
+            mode: match input.mode {
+                InputMode::Text => "text",
+                InputMode::Password => "password",
+                InputMode::Multiline => "multiline",
+            }
+            .to_string(),
             ok_label: input
                 .ok_label
                 .as_deref()
@@ -136,16 +136,12 @@ impl Backend for OHOS {
         // Send request to ArkTS layer
         let status = tsfn.call(request, ThreadsafeFunctionCallMode::NonBlocking);
         if status != napi_ohos::Status::Ok {
-            // Recover and call the callback with error if send failed
-            let callback = unsafe {
-                Box::from_raw(
-                    callback_ptr as *mut Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
-                )
-            };
-            callback(Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Failed to send request to ArkTS: {:?}", status),
-            )));
+            // Recover and invoke callback if send failed
+            let callback = unsafe { Box::from_raw(callback_ptr) };
+            callback(Err(io::Error::other(format!(
+                "Failed to send request to ArkTS: {:?}",
+                status
+            ))));
         }
 
         Ok(())
@@ -154,8 +150,8 @@ impl Backend for OHOS {
 
 /// Register the ArkTS callback handler for input box requests.
 ///
-/// This function must be called from ArkTS before using the InputBox API. The
-/// callback will receive [`InputBoxRequest`] objects when `show()` is called.
+/// This function must be called from ArkTS before using the InputBox API.
+/// The callback will receive [`InputBoxRequest`] objects when `show()` is called.
 ///
 /// # Example
 ///
@@ -195,14 +191,14 @@ pub fn register_inputbox_callback(
 ///
 /// // When user clicks OK:
 /// inputbox.onInputboxResponse({
-///   callbackPtr: request.callbackPtr,
+///   callback: request.callback,
 ///   text: userInputText,
 ///   error: null
 /// });
 ///
 /// // When user clicks Cancel:
 /// inputbox.onInputboxResponse({
-///   callbackPtr: request.callbackPtr,
+///   callback: request.callback,
 ///   text: null,
 ///   error: null
 /// });
@@ -210,15 +206,10 @@ pub fn register_inputbox_callback(
 #[allow(dead_code)]
 #[napi]
 pub fn on_inputbox_response(response: InputBoxResponse) {
-    // Recover the leaked callback from the pointer passed by ArkTS
-    let callback = unsafe {
-        Box::from_raw(
-            response.callback_ptr as *mut Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
-        )
-    };
+    let callback = unsafe { Box::from_raw(response.callback as *mut Callback) };
 
     if let Some(error) = response.error {
-        callback(Err(io::Error::new(io::ErrorKind::Other, error)));
+        callback(Err(io::Error::other(error)));
     } else {
         callback(Ok(response.text));
     }

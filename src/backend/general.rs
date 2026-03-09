@@ -1,6 +1,6 @@
 use std::{borrow::Cow, path::Path, process::Command};
 
-use crate::{InputBox, InputMode, backend::CommandBackend};
+use crate::{backend::CommandBackend, InputBox, InputMode};
 
 /// Zenity backend.
 ///
