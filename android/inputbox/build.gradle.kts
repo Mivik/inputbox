@@ -29,6 +29,6 @@ android {
 }
 
 dependencies {
-	implementation(libs.appcompat.v7)
 	implementation(libs.google.material)
+	implementation(libs.androidx.startup.runtime)
 }

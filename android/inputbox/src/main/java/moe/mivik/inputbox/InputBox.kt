@@ -1,6 +1,5 @@
 package moe.mivik.inputbox
 
-import android.app.Activity
 import android.content.Context
 import android.text.InputType
 import android.util.TypedValue
@@ -19,7 +18,6 @@ class InputBox {
 		@JvmStatic
 		fun showInput(
 			callback: Long,
-			ctx: Activity,
 			title: String,
 			prompt: String?,
 			default: String,
@@ -28,7 +26,8 @@ class InputBox {
 			mode: String,
 			autoWrap: Boolean,
 			scrollToEnd: Boolean,
-		) {
+		): String? {
+			val ctx = ActivityTracker.currentActivity ?: return "no active activity"
 			ctx.runOnUiThread {
 				val input = TextInputEditText(ctx).apply {
 					setText(default)
@@ -77,6 +76,7 @@ class InputBox {
 					.setOnCancelListener { inputCallback(callback, null) }
 					.show()
 			}
+			return null
 		}
 
 		@JvmStatic
