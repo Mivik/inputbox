@@ -72,6 +72,22 @@ impl InputMode {
 ///     .ok_label("Submit")
 ///     .cancel_label("Quit");
 /// ```
+///
+/// # Sync vs Async
+///
+/// This struct provides both synchronous ([`show`](Self::show) /
+/// [`show_with`](Self::show_with)) and asynchronous
+/// ([`show_async`](Self::show_async) /
+/// [`show_with_async`](Self::show_with_async)) methods to display the dialog.
+///
+/// **On most platforms** the sync methods are safe to call from any thread and
+/// will simply block until the user closes the dialog.
+///
+/// **On iOS**, however, the sync methods **must not be used**. The iOS backend
+/// (`IOS`) must run on the main thread, and blocking that thread with
+/// `rx.recv()` prevents UIKit's run loop from processing events — the alert
+/// will never appear and the call will deadlock. Always use the async variants
+/// on iOS.
 #[derive(Clone, Debug)]
 pub struct InputBox<'a> {
     /// The title of the dialog window.
@@ -219,18 +235,28 @@ impl<'a> InputBox<'a> {
         backend.execute_async(self, Box::new(callback))
     }
 
-    /// Shows the input box with [`default_backend`] for the current platform.
+    /// Shows the input box with [`default_backend`] for the current platform,
+    /// blocking until the user closes the dialog.
     ///
     /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
     /// if the user clicked Cancel or closed the dialog.
+    ///
+    /// # Warning
+    ///
+    /// Do not use this method on iOS. See struct-level documentation for details.
     pub fn show(&self) -> io::Result<Option<String>> {
         default_backend().execute(self)
     }
 
-    /// Shows the input box with the specified backend.
+    /// Shows the input box with the specified backend, blocking until the user
+    /// closes the dialog.
     ///
     /// Returns `Some(input)` if the user clicked OK and entered text, or `None`
     /// if the user clicked Cancel or closed the dialog.
+    ///
+    /// # Warning: do not use on iOS
+    ///
+    ///  Do not use this method on iOS. See struct-level documentation for details.
     pub fn show_with(&self, backend: &dyn Backend) -> io::Result<Option<String>> {
         backend.execute(self)
     }

@@ -70,12 +70,12 @@ pub trait Backend {
         callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
     ) -> io::Result<()>;
 
-    /// Synchronous version of `execute_async` that blocks until the user
-    /// responds.
+    /// Synchronous version of `execute_async` that blocks the calling thread
+    /// until the user responds.
     ///
-    /// This trait has a default implementation that simply calls
-    /// `execute_async` and blocks on the result. Some backends may choose to
-    /// override this with a more efficient implementation.
+    /// The default implementation calls `execute_async` and then blocks on a
+    /// channel receive. Some backends may override this with a more efficient
+    /// implementation.
     fn execute(&self, input: &InputBox) -> io::Result<Option<String>> {
         let (tx, rx) = mpsc::sync_channel(1);
         self.execute_async(

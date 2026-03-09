@@ -17,15 +17,19 @@ use objc2_ui_kit::{
 
 use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputMode, backend::Backend};
 
-/// IOS backend for InputBox.
+/// iOS backend for InputBox using `UIAlertController`.
 ///
 /// # Warnings
 ///
-/// - You can only run this backend on main thread.
-/// - You may not call this backend in synchronous fashion (e.g. by calling
-///   `execute` directly or using `show`), as it will block the main thread and
-///   cause the app to freeze. Always use `execute_async` or `show_with_async`
-///   when using this backend.
+/// - **Main thread only.** `execute_async` checks for the main thread via
+///   [`MainThreadMarker`] and returns an error if called from any other thread.
+/// - **Never use the sync methods.** Calling `execute` (or the `show` /
+///   `show_with` helpers on [`InputBox`](crate::InputBox)) on the main thread
+///   will block it while waiting for the user to respond. Because UIKit relies
+///   on the main run loop to deliver events — including the user tapping a
+///   button in the presented alert — the dialog will never appear or be
+///   dismissable, and the call will **deadlock**. Always use `execute_async` or
+///   the `show_async` / `show_with_async` helpers instead.
 ///
 /// # Limitations
 ///
