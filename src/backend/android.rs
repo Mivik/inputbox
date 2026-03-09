@@ -1,17 +1,17 @@
 use std::io;
 
 use jni::{
-    Env, EnvUnowned, JavaVM, Outcome,
     errors::ThrowRuntimeExAndDefault,
     jni_sig, jni_str,
     objects::{JClass, JObject, JString, JValue},
     refs::Global,
     signature::MethodSignature,
-    sys::{JNIEnv, jlong},
+    sys::{jlong, JNIEnv},
+    Env, EnvUnowned, JavaVM, Outcome,
 };
 use once_cell::sync::OnceCell;
 
-use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox};
+use crate::{InputBox, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
 
 use super::Backend;
 

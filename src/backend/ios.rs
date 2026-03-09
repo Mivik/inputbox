@@ -6,16 +6,16 @@ use std::{
 };
 
 use block2::StackBlock;
-use objc2::{MainThreadMarker, rc::Retained};
+use objc2::{rc::Retained, MainThreadMarker};
 use objc2_core_foundation::{CGFloat, CGRect, CGSize};
-use objc2_foundation::{NSArray, NSObjectNSKeyValueCoding, NSRange, NSString, ns_string};
+use objc2_foundation::{ns_string, NSArray, NSObjectNSKeyValueCoding, NSRange, NSString};
 use objc2_ui_kit::{
     NSLayoutConstraint, UIAlertAction, UIAlertActionStyle, UIAlertController,
     UIAlertControllerStyle, UIApplication, UIFont, UITextField, UITextInputTraits, UITextView,
     UIViewController, UIWindowScene,
 };
 
-use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputMode, backend::Backend};
+use crate::{backend::Backend, InputMode, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
 
 /// iOS backend for InputBox using `UIAlertController`.
 ///
