@@ -12,7 +12,7 @@ use napi_ohos::{
 };
 
 use super::Backend;
-use crate::{DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE, InputBox, InputMode};
+use crate::{InputBox, InputMode, DEFAULT_CANCEL_LABEL, DEFAULT_OK_LABEL, DEFAULT_TITLE};
 
 static REQUEST_CALLBACK: OnceLock<
     ThreadsafeFunction<InputBoxRequest, (), InputBoxRequest, napi_ohos::Status, false, false, 16>,
@@ -101,7 +101,8 @@ impl Backend for OHOS {
         callback: Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
     ) -> io::Result<()> {
         let tsfn = REQUEST_CALLBACK.get().ok_or_else(|| {
-            io::Error::other(
+            io::Error::new(
+                io::ErrorKind::Other,
                 "OHOS callback not registered. Call registerInputboxCallback from ArkTS first.",
             )
         })?;
@@ -146,10 +147,10 @@ impl Backend for OHOS {
                     callback_ptr as *mut Box<dyn FnOnce(io::Result<Option<String>>) + Send>,
                 )
             };
-            callback(Err(io::Error::other(format!(
-                "Failed to send request to ArkTS: {:?}",
-                status
-            ))));
+            callback(Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to send request to ArkTS: {:?}", status),
+            )));
         }
 
         Ok(())
@@ -222,7 +223,7 @@ pub fn on_inputbox_response(response: InputBoxResponse) {
     };
 
     if let Some(error) = response.error {
-        callback(Err(io::Error::other(error)));
+        callback(Err(io::Error::new(io::ErrorKind::Other, error)));
     } else {
         callback(Ok(response.text));
     }
