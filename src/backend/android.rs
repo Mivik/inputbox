@@ -21,7 +21,7 @@ struct IoErrorWrapper(io::Error);
 
 impl From<jni::errors::Error> for IoErrorWrapper {
     fn from(value: jni::errors::Error) -> Self {
-        IoErrorWrapper(io::Error::other(value))
+        IoErrorWrapper(io::Error::new(io::ErrorKind::Other, value))
     }
 }
 impl From<io::Error> for IoErrorWrapper {
@@ -110,7 +110,10 @@ impl Android {
         );
 
         let java_class = JAVA_CLASS.get().ok_or_else(|| {
-            io::Error::other("Android activity not set. Call Android::initialize* first.")
+            io::Error::new(
+                io::ErrorKind::Other,
+                "Android activity not set. Call Android::initialize* first.",
+            )
         })?;
         JavaVM::singleton()?.attach_current_thread(|env| -> Result<(), IoErrorWrapper> {
             let title = env.new_string(input.title.as_deref().unwrap_or(DEFAULT_TITLE))?;
@@ -151,7 +154,7 @@ impl Android {
                 .l()?;
             if !result.is_null() {
                 let result = JString::cast_local(env, result)?;
-                Err(io::Error::other(result.to_string()).into())
+                Err(io::Error::new(io::ErrorKind::Other, result.to_string()).into())
             } else {
                 Ok(())
             }

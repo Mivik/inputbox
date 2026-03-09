@@ -79,8 +79,12 @@ impl Backend for IOS {
     ) -> io::Result<()> {
         let callback = Arc::new(Mutex::new(Some(callback)));
 
-        let mtm = MainThreadMarker::new()
-            .ok_or_else(|| io::Error::other("IOS backend can only be used on main thread"))?;
+        let mtm = MainThreadMarker::new().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "IOS backend can only be used on main thread",
+            )
+        })?;
 
         let title = input.title.as_deref().unwrap_or(DEFAULT_TITLE);
         let prompt_ns = input.prompt.as_deref().map(NSString::from_str);
@@ -215,7 +219,8 @@ impl Backend for IOS {
         alert.addAction(&ok_action);
 
         let top_vc = Self::get_top_view_controller(mtm).ok_or_else(|| {
-            io::Error::other(
+            io::Error::new(
+                io::ErrorKind::Other,
                 "no active window or view controller found to present the input dialog",
             )
         })?;
