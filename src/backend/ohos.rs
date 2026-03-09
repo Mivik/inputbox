@@ -3,8 +3,7 @@
 //! This backend uses NAPI to communicate with ArkTS layer for showing native
 //! dialogs.
 
-use std::io;
-use std::sync::OnceLock;
+use std::{io, sync::OnceLock};
 
 use napi_derive_ohos::napi;
 use napi_ohos::{
