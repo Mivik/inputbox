@@ -107,15 +107,87 @@ InputBox::new()
 
 ## Backends
 
-| Backend     | Platform    | How it works                                   | Extra setup                   |
-| ----------- | ----------- | ---------------------------------------------- | ----------------------------- |
-| `PSScript`  | Windows     | PowerShell + WinForms, no extra install needed | None                          |
-| `JXAScript` | macOS       | `osascript` JXA, built into the OS             | None                          |
-| `Android`   | Android     | AAR + JNI to show an Android AlertDialog       | Include AAR in APK            |
-| `IOS`       | iOS         | UIKit alert                                    | None                          |
-| `OHOS`      | OpenHarmony | NAPI + ArkTS dialog                            | See [OHOS Setup](#ohos-setup) |
-| `Yad`       | Linux       | [`yad`](https://github.com/v1cont/yad)         | Install `yad`                 |
-| `Zenity`    | Linux       | `zenity` — fallback on GNOME systems           | Install `zenity`              |
+| Backend     | Platform    | How it works                                   | Extra setup                         |
+| ----------- | ----------- | ---------------------------------------------- | ----------------------------------- |
+| `PSScript`  | Windows     | PowerShell + WinForms, no extra install needed | None                                |
+| `JXAScript` | macOS       | `osascript` JXA, built into the OS             | None                                |
+| `Android`   | Android     | AAR + JNI to show an Android AlertDialog       | See [Android Setup](#android-setup) |
+| `IOS`       | iOS         | UIKit alert                                    | None                                |
+| `OHOS`      | OpenHarmony | NAPI + ArkTS dialog                            | See [OHOS Setup](#ohos-setup)       |
+| `Yad`       | Linux       | [`yad`](https://github.com/v1cont/yad)         | Install `yad`                       |
+| `Zenity`    | Linux       | `zenity` — fallback on GNOME systems           | Install `zenity`                    |
+
+### Android Setup
+
+You need to include AAR in your Android project to use the Android backend. The AAR is bundled with the crate, but you need to configure your Gradle build to find it.
+
+#### Gradle Setup
+
+Inside of your project's `settings.gradle` file, add the following code and Maven repository definition.
+
+`$PATH_TO_DEPENDENT_CRATE` is the relative path to the Cargo manifest (`Cargo.toml`) of any crate in your workspace that depends on `inputbox` from the location of your `settings.gradle` file:
+
+```groovy
+import groovy.json.JsonSlurper
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        // ...Other repositories...
+        maven {
+            url = findCrateBundledProject("inputbox-android")
+            metadataSources.artifact()
+        }
+    }
+}
+
+String findCrateBundledProject(packageName) {
+    def dependencyText = providers.exec {
+        commandLine("cargo", "metadata", "--format-version", "1", "--filter-platform", "aarch64-linux-android", "--manifest-path", "$PATH_TO_DEPENDENT_CRATE/Cargo.toml")
+    }.standardOutput.asText.get()
+
+    def dependencyJson = new JsonSlurper().parseText(dependencyText)
+    def manifestPath = file(dependencyJson.packages.find { it.name == packageName }.manifest_path)
+    return new File(manifestPath.parentFile, "maven").path
+}
+```
+
+Then, wherever you declare your dependencies, add the following:
+
+```groovy
+implementation "moe.mivik:inputbox:latest.release"
+```
+
+#### Crate initialization
+
+The `jni` crate must be initialized before the crate can interact with the JVM. Add the following code to your native library's initialization function:
+
+```rust,ignore
+// `jni` crate v0.22 or higher
+#[export_name = "Java_com_orgname_android_rust_init"]
+extern "system" fn java_init(
+    env: EnvUnowned,
+    _class: JClass,
+) {
+    let result = env.with_env(|env| -> jni::errors::Result<()> {
+        inputbox::backend::Android::initialize(env)?;
+        // ...
+    });
+    // ...
+}
+
+// Earlier versions of `jni` or other JNI bindings
+#[export_name = "Java_com_orgname_android_rust_init"]
+extern "system" fn java_init(
+    env: JNIEnv,
+    _class: JClass,
+) {
+    unsafe {
+        inputbox::backend::Android::initialize_raw(env.as_raw() as *mut _)?;
+    }
+    // ...
+}
+```
 
 ### OHOS Setup
 
