@@ -1,0 +1,24 @@
+[package]
+name = "inputbox-android"
+version = "0.1.0"
+authors = ["Mivik <mivikq@gmail.com>"]
+description = "The internal Android support for the inputbox crate. You shouldn't depend on this directly."
+documentation = "https://docs.rs/inputbox-android"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+include = [
+    "src/*",
+    "maven/pom.xml",
+    "maven/moe/mivik/inputbox/**/",
+    "maven/moe/mivik/inputbox/maven-metadata-local.xml",
+]
+
+[lib]
+
+[dependencies]
