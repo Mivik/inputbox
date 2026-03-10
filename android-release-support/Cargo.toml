@@ -1,6 +1,6 @@
 [package]
 name = "inputbox-android"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mivik <mivikq@gmail.com>"]
 description = "The internal Android support for the inputbox crate. You shouldn't depend on this directly."
 documentation = "https://docs.rs/inputbox-android"
