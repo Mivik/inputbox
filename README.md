@@ -8,9 +8,7 @@
 
 ## The Story
 
-Picture this: you're writing a Rust CLI tool and you just want to pop up a little
-dialog that says _"hey, what's your name?"_ and take whatever the user types.
-Simple, right?
+Picture this: you're writing a Rust CLI tool and you just want to pop up a little dialog that says _"hey, what's your name?"_ and take whatever the user types. Simple, right?
 
 So you look at the ecosystem.
 
@@ -19,16 +17,13 @@ So you look at the ecosystem.
 - **`tinyfiledialogs`**: `input_box` looks promising! ...but why does my input box turn into a password input when `default` is empty (`Some("")`)? No multiline, no custom labels, no control over backends... Oh and it's a C binding.
 - **`dialog`**: Finally, an input box! ...but not for Windows or macOS. It fully depends on tools like `zenity`, `kdialog` or `dialog`.
 
-You stare into the void. The void stares back. You write the dialog in HTML/JS
-because at least Electron works on all platforms.
+You stare into the void. The void stares back. You write the dialog in HTML/JS because at least Electron works on all platforms.
 
 _Not anymore._
 
 ## What `inputbox` Does
 
-`inputbox` is a minimal, cross-platform Rust library that shows a native GUI
-input dialog and returns what the user typed. It uses whatever is available on
-the system. Should work™ most of the time.
+`inputbox` is a minimal, cross-platform Rust library that shows a native GUI input dialog and returns what the user typed. It uses whatever is available on the system. Should work™ most of the time.
 
 ## Quick Start
 
@@ -106,40 +101,25 @@ InputBox::new()
 
 - **Multiple input modes** — text, password, or multiline
 - **Highly customizable** — title, prompt, button labels, dimensions, and more
-- **Works on most platforms** — Windows, macOS, Linux, Android, iOS nad OpenHarmony
+- **Works on most platforms** — Windows, macOS, Linux, Android, iOS and OpenHarmony
 - **Pluggable backends** — use a specific backend or let the library pick
 - **Synchronous and asynchronous** — safe sync on most platforms, async required on iOS
 
 ## Backends
 
-| Backend     | Platform    | How it works                                    |
-| ----------- | ----------- | ----------------------------------------------- |
-| `PSScript`  | Windows     | PowerShell + WinForms, no extra install needed  |
-| `JXAScript` | macOS       | `osascript` JXA, built into the OS              |
-| `Android`   | Android     | AAR + JNI to show an Android AlertDialog        |
-| `IOS`       | iOS         | UIKit alert                                     |
-| `OHOS`      | OpenHarmony | NAPI + ArkTS dialog                             |
-| `Yad`       | Linux       | [`yad`](https://github.com/v1cont/yad)          |
-| `Zenity`    | Linux       | `zenity` — fallback on GNOME systems            |
+| Backend     | Platform    | How it works                                   | Extra setup                   |
+| ----------- | ----------- | ---------------------------------------------- | ----------------------------- |
+| `PSScript`  | Windows     | PowerShell + WinForms, no extra install needed | None                          |
+| `JXAScript` | macOS       | `osascript` JXA, built into the OS             | None                          |
+| `Android`   | Android     | AAR + JNI to show an Android AlertDialog       | Include AAR in APK            |
+| `IOS`       | iOS         | UIKit alert                                    | None                          |
+| `OHOS`      | OpenHarmony | NAPI + ArkTS dialog                            | See [OHOS Setup](#ohos-setup) |
+| `Yad`       | Linux       | [`yad`](https://github.com/v1cont/yad)         | Install `yad`                 |
+| `Zenity`    | Linux       | `zenity` — fallback on GNOME systems           | Install `zenity`              |
 
-### Linux Installation
+### OHOS Setup
 
-```bash
-# Arch Linux
-sudo pacman -S yad
-
-# Debian/Ubuntu
-sudo apt install yad
-
-# Fedora
-sudo dnf install yad
-
-# or use zenity (usually pre-installed on GNOME)
-sudo apt install zenity
-```
-
-The `show()` method automatically picks the best backend for the current platform.
-You can also specify one explicitly via `show_with()`.
+Currently you need to implement the ArkTS dialog yourself and use `registerInputboxCallback` to connect it to `inputbox`. See the [OHOS example](https://github.com/Mivik/inputbox/blob/9f5664f2b720cc9f002b0798d0cb43a0bb466858/src/backend/ohos.rs#L47) for setup details.
 
 ## License
 
