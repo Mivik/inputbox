@@ -172,16 +172,16 @@ impl CommandBackend for Yad {
 
             cmd.arg("--button");
             if let Some(label) = &input.cancel_label {
-                cmd.arg(format!("{label}{sep}gtk-cancel"));
+                cmd.arg(format!("{label}{sep}gtk-cancel:1"));
             } else {
-                cmd.arg("yad-cancel");
+                cmd.arg("yad-cancel:1");
             }
 
             cmd.arg("--button");
             if let Some(label) = &input.ok_label {
-                cmd.arg(format!("{label}{sep}gtk-ok"));
+                cmd.arg(format!("{label}{sep}gtk-ok:0"));
             } else {
-                cmd.arg("yad-ok");
+                cmd.arg("yad-ok:0");
             }
         }
         if let Some(width) = input.width {
