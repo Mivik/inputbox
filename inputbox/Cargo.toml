@@ -1,6 +1,6 @@
 [package]
 name = "inputbox"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mivik <mivikq@gmail.com>", "sjfhsjfh <sjfhsjfh@qq.com>"]
 description = "A cross-platform, native GUI input box."
 documentation = "https://docs.rs/inputbox"
