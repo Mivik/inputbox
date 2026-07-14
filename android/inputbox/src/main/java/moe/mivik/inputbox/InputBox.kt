@@ -74,15 +74,23 @@ class InputBox {
                             }
                         )
                     }
+
+                var callbackSent = false
+                fun sendCallback(text: String?) {
+                    if (callbackSent) return
+                    callbackSent = true
+                    inputCallback(callback, text)
+                }
+
                 AlertDialog.Builder(ctx)
                     .setTitle(title)
                     .setView(layout)
                     .setNegativeButton(cancelLabel, null)
                     .setPositiveButton(okLabel) { _, _ ->
-                        inputCallback(callback, input.text.toString())
+                        sendCallback(input.text.toString())
                     }
                     .setCancelable(true)
-                    .setOnDismissListener { inputCallback(callback, null) }
+                    .setOnDismissListener { sendCallback(null) }
                     .show()
             }
             return null
