@@ -6,7 +6,7 @@ use std::{
 };
 
 use block2::StackBlock;
-use objc2::{rc::Retained, MainThreadMarker};
+use objc2::{available, rc::Retained, MainThreadMarker};
 use objc2_core_foundation::{CGFloat, CGRect, CGSize};
 use objc2_foundation::{ns_string, NSArray, NSObjectNSKeyValueCoding, NSRange, NSString};
 use objc2_ui_kit::{
@@ -58,11 +58,26 @@ impl IOS {
     ///
     /// Returns `None` if no active window or view controller is found.
     pub fn get_top_view_controller(mtm: MainThreadMarker) -> Option<Retained<UIViewController>> {
-        let key_window = UIApplication::sharedApplication(mtm)
-            .connectedScenes()
-            .iter()
-            .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
-            .find_map(|scene| scene.keyWindow())?;
+        let key_window = if available!(ios = 15.0) {
+            UIApplication::sharedApplication(mtm)
+                .connectedScenes()
+                .iter()
+                .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
+                .find_map(|scene| scene.keyWindow())
+        } else if available!(ios = 13.0) {
+            // `UIWindowScene::keyWindow` is only available on iOS 15+; on
+            // iOS 13/14 fall back to scanning the scene's windows.
+            UIApplication::sharedApplication(mtm)
+                .connectedScenes()
+                .iter()
+                .filter_map(|scene| scene.downcast::<UIWindowScene>().ok())
+                .find_map(|scene| scene.windows().into_iter().find(|win| win.isKeyWindow()))
+        } else {
+            // iOS 12 has no scenes at all; use the classic key window.
+            #[allow(deprecated)]
+            let key_window = UIApplication::sharedApplication(mtm).keyWindow();
+            key_window
+        }?;
         let mut top_vc = key_window.rootViewController()?;
         while let Some(presented) = top_vc.presentedViewController() {
             top_vc = presented;
