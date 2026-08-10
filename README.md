@@ -29,7 +29,7 @@ _Not anymore._
 
 ```toml
 [dependencies]
-inputbox = "0.1.4"
+inputbox = "0.1.5"
 ```
 
 ```rust
